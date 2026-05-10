@@ -1,4 +1,4 @@
-# Symptom Classify & Hospital Booking Agent
+# AI Symptoms Classifier & Hospital Booking Agent
 
 An AI agent that classifies patient symptoms by urgency and department, then books the right appointment — in a single step.
 
