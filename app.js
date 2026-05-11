@@ -169,6 +169,26 @@ app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
+// ============================================
+// NEW: API endpoint for Prompt Opinion MCP integration
+// ============================================
+app.post('/api/classify', async (req, res) => {
+  try {
+    const { symptoms, age } = req.body;
+    
+    if (!symptoms || !age) {
+      return res.status(400).json({ error: "Symptoms and age are required" });
+    }
+    
+    const result = await classifySymptoms(symptoms, age);
+    res.json(result);
+    
+  } catch (error) {
+    console.error("API Error:", error.message);
+    res.status(500).json({ error: "Classification failed" });
+  }
+});
+
 app.post('/submit', async (req, res) => {
   try {
     const { name, age, symptoms, date, time } = req.body;
@@ -362,4 +382,5 @@ app.listen(PORT, () => {
   console.log(`AI Classification: Groq (llama-3.3-70b-versatile)`);
   console.log(`Auth0 Token Vault: Connected`);
   console.log(`FHIR Sandbox: https://hapi.fhir.org/baseR4`);
+  console.log(`API Endpoint: /api/classify ready for Prompt Opinion integration`);
 });
