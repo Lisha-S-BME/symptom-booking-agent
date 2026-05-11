@@ -3,80 +3,129 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Hospital Appointment Form</title>
+<title>AI Health Classify & Book</title>
 <style>
-body {
-    margin: 0; padding: 0;
-    background-color: #add8e6;
-    font-family: Arial, sans-serif;
-}
-.card {
-    width: 480px;
-    background: white;
-    margin: 50px auto;
-    padding: 35px;
-    border-radius: 12px;
-    box-shadow: 0 0 10px rgba(0,0,0,0.1);
-}
-h1 { text-align: center; color: #00008B; font-size: 28px; margin-bottom: 8px; }
-h2 { text-align: center; color: #555; font-size: 18px; margin-bottom: 20px; }
-input, select, textarea, button {
-    width: 100%; margin-bottom: 22px;
-    padding: 10px; border-radius: 6px; border: 1px solid #ccc;
-    font-size: 16px; box-sizing: border-box;
-}
-textarea { resize: none; height: 60px; }
-button {
-    width: 70%; height: 45px; background-color: #00008B; color: white;
-    font-weight: bold; border-radius: 8px; border: none; cursor: pointer;
-    display: block; margin: 30px auto 0;
-}
+body { margin: 0; padding: 0; background-color: #f0f4f8; font-family: Arial, sans-serif; }
+.card { width: 520px; background: white; margin: 50px auto; padding: 35px; border-radius: 12px; box-shadow: 0 0 15px rgba(0,0,0,0.1); }
+h1 { text-align: center; color: #1e40af; font-size: 24px; margin-bottom: 5px; }
+h2 { text-align: center; color: #64748b; font-size: 16px; font-weight: normal; margin-bottom: 25px; }
+input, textarea, button { width: 100%; margin-bottom: 18px; padding: 12px; border-radius: 8px; border: 1px solid #d1d5db; font-size: 15px; box-sizing: border-box; }
+textarea { resize: none; height: 70px; }
+button { height: 45px; color: white; font-weight: bold; border-radius: 8px; border: none; cursor: pointer; }
+.btn-primary { background-color: #2563eb; }
+.btn-voice { background-color: #059669; }
+.btn-voice.recording { background-color: #dc2626; animation: pulse 1s infinite; }
+@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.6; } }
+.voice-status { text-align: center; font-size: 13px; color: #64748b; margin-top: -10px; margin-bottom: 15px; min-height: 20px; }
+.symptom-row { display: flex; gap: 10px; }
+.symptom-row button { width: 130px; flex-shrink: 0; }
+.symptom-row div { flex-grow: 1; }
+#loading { display: none; text-align: center; padding: 20px; color: #2563eb; font-weight: bold; }
 </style>
 </head>
 <body>
 <div class="card">
-<h1>Hospital Appointment Form</h1>
-<h2>Book Your Appointment</h2>
+<h1>AI Health Classifier and Book Appointment</h1>
+<h2>Describe symptoms. AI classifies urgency & department. Books your appointment.</h2>
 <form id="appointmentForm">
     <label>Patient Name *</label>
-    <input type="text" name="name" required>
-    
+    <input type="text" name="name" id="name" required placeholder="Full name">
     <label>Age *</label>
-    <input type="number" name="age" required>
-
+    <input type="number" name="age" id="age" required placeholder="Age">
     <label>Symptoms *</label>
-    <input type="text" name="symptoms" required>
-
-    <label>Department (optional)</label>
-    <input type="text" name="department">
-
-    <label>Reason for Visit</label>
-    <textarea name="reason"></textarea>
-
+    <div class="symptom-row">
+        <div style="flex-grow:1;"><input type="text" name="symptoms" id="symptoms" required placeholder="Describe how you feel..."></div>
+        <button type="button" id="voiceBtn" class="btn-voice" onclick="toggleVoice()">Voice</button>
+    </div>
+    <div class="voice-status" id="voiceStatus"></div>
     <label>Preferred Date *</label>
-    <input type="date" name="date" required>
-
+    <input type="date" name="date" id="date" required>
     <label>Preferred Time *</label>
-    <input type="time" name="time" required>
-
-    <button type="submit">Confirm Appointment</button>
+    <input type="time" name="time" id="time" required>
+    <button type="submit" class="btn-primary">Classify & Book Appointment</button>
 </form>
-<div id="response" style="text-align:center;"></div>
+<div id="loading">AI is analyzing your symptoms...</div>
+<div id="response" style="text-align:center; margin-top:15px;"></div>
+</div>
+
 <script>
+let recognition = null;
+let isRecording = false;
+
+function toggleVoice() {
+    const btn = document.getElementById('voiceBtn');
+    const status = document.getElementById('voiceStatus');
+    const symptomsInput = document.getElementById('symptoms');
+    if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+        status.textContent = 'Voice not supported. Use Chrome.';
+        status.style.color = '#dc2626';
+        return;
+    }
+    if (!recognition) {
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        recognition = new SpeechRecognition();
+        recognition.lang = 'en-US';
+        recognition.interimResults = true;
+        recognition.continuous = false;
+        recognition.onresult = (event) => {
+            let transcript = '';
+            for (let i = event.resultIndex; i < event.results.length; i++) {
+                transcript += event.results[i][0].transcript;
+            }
+            symptomsInput.value = transcript;
+        };
+        recognition.onerror = (event) => {
+            status.textContent = 'Voice error: ' + event.error;
+            status.style.color = '#dc2626';
+            stopRecording();
+        };
+        recognition.onend = () => { stopRecording(); };
+    }
+    if (isRecording) { stopRecording(); } else { startRecording(); }
+}
+
+function startRecording() {
+    const btn = document.getElementById('voiceBtn');
+    const status = document.getElementById('voiceStatus');
+    isRecording = true;
+    btn.textContent = 'Stop';
+    btn.classList.add('recording');
+    status.textContent = 'Listening... Speak symptoms now';
+    status.style.color = '#059669';
+    recognition.start();
+}
+
+function stopRecording() {
+    const btn = document.getElementById('voiceBtn');
+    const status = document.getElementById('voiceStatus');
+    isRecording = false;
+    btn.textContent = 'Voice';
+    btn.classList.remove('recording');
+    status.textContent = 'Voice captured. Edit if needed.';
+    status.style.color = '#2563eb';
+    if (recognition) { recognition.stop(); }
+}
+
 const form = document.getElementById('appointmentForm');
 form.addEventListener('submit', async (e) => {
     e.preventDefault();
+    const loading = document.getElementById('loading');
+    const responseDiv = document.getElementById('response');
+    loading.style.display = 'block';
+    responseDiv.innerHTML = '';
     const data = Object.fromEntries(new FormData(form).entries());
-    const res = await fetch('/submit', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data)
-    });
-    const text = await res.text();
-    document.getElementById('response').innerHTML = text;
-    form.reset();
+    try {
+        const res = await fetch('/submit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
+        const html = await res.text();
+        loading.style.display = 'none';
+        document.open();
+        document.write(html);
+        document.close();
+    } catch (error) {
+        loading.style.display = 'none';
+        responseDiv.innerHTML = '<p style="color:#dc2626;">Error: ' + error.message + '</p>';
+    }
 });
 </script>
-</div>
 </body>
 </html>
