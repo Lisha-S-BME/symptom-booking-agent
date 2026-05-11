@@ -14,6 +14,18 @@ const groq = new Groq({
 });
 
 app.use(bodyParser.json());
+
+// Enable CORS for all routes
+app.use((req, res, next) => {
+  res.header('Access-Control-Allow-Origin', '*');
+  res.header('Access-Control-Allow-Headers', 'Content-Type');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  if (req.method === 'OPTIONS') {
+    return res.sendStatus(200);
+  }
+  next();
+});
+
 app.use(express.static(path.join(__dirname, 'public')));
 
 async function classifySymptoms(symptoms, age) {
@@ -169,9 +181,6 @@ app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-// ============================================
-// NEW: API endpoint for Prompt Opinion MCP integration
-// ============================================
 app.post('/api/classify', async (req, res) => {
   try {
     const { symptoms, age } = req.body;
@@ -382,5 +391,5 @@ app.listen(PORT, () => {
   console.log(`AI Classification: Groq (llama-3.3-70b-versatile)`);
   console.log(`Auth0 Token Vault: Connected`);
   console.log(`FHIR Sandbox: https://hapi.fhir.org/baseR4`);
-  console.log(`API Endpoint: /api/classify ready for Prompt Opinion integration`);
+  console.log(`API Endpoint: /api/classify ready`);
 });
